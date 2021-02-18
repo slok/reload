@@ -18,6 +18,9 @@ deps:  ## Fixes the dependencies
 unit-test:  ## Runs unit test.
 	./scripts/check/unit-test.sh
 
+.PHONY: test
+test: unit-test  ## Runs unit test.
+
 .PHONY: check
 check:  ## Runs checks in CI environment (without docker).
 	./scripts/check/check.sh
