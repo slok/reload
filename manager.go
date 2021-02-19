@@ -29,16 +29,17 @@ type Manager struct {
 	lock      uint32 // Mutex based on atomic integer.
 }
 
-// On registers a notifier that will realod all the reloaders when
+// On registers a notifier that will execute all reloaders when
 // any of the notifiers returns.
 //
 // The notifier should stay waiting until the reload needs to take place.
 // The notifier should be able to be called multiple times.
 //
 // When a notifier ends its execution triggering the reload process
-// all other triggers will be ended, after that all of the notifiers
-// will be executed once again and stay waiting until the next notifier
-// end, this process will be repeated forever until the manager stops.
+// the notifier will start again and keep waiting along with the ones
+// already waiting.
+//
+// This process will be repeated forever until the manager stops.
 func (m *Manager) On(n Notifier) {
 	m.notifiers = append(m.notifiers, n)
 }
@@ -63,44 +64,30 @@ func (m *Manager) Add(priority int, r Reloader) {
 	m.reloaders[priority] = rg
 }
 
-// Run will start the manager, start all the triggers and wait until
+// Run will start the manager, start all the notifiers and wait until
 // any of them returns, then it will call the notifiers in priority
-// batches. And start again from the beggining executing all the
-// notifiers.
+// batches. All the triggered notifiers will start again.
 //
 // If the context is cancelled, the manager Run will end without error.
 // If any of the reloaders reload process ends with an error, run will
 // end its execution and return an error.
 func (m *Manager) Run(ctx context.Context) error {
-	// Run forever or until the context is ended.
-	for {
-		errC := make(chan error, 1)
-		go func() {
-			errC <- m.run(ctx)
-		}()
-
-		select {
-		case err := <-errC:
-			if err != nil {
-				return err
-			}
-		case <-ctx.Done():
-			return nil
-		}
-	}
-}
-
-func (m *Manager) run(ctx context.Context) error {
-	signal := make(chan string)
+	signal := make(chan string, len(m.notifiers))
 	ctx, cancel := context.WithCancel(ctx)
-	defer cancel() // This will stop all running triggers.
+	defer cancel() // This will stop all running notifiers.
 
-	// Run all notifiers and wait for the first one.
+	// Run all notifiers and wait for any of them sends a signal signals.
 	for _, n := range m.notifiers {
 		go func(n Notifier) {
-			select {
-			case signal <- n.Notify(ctx):
-			case <-ctx.Done():
+			// Notifiers will rerun once they end executing and
+			// notify. This will be forever or until the context
+			// ends.
+			for {
+				select {
+				case signal <- n.Notify(ctx):
+				case <-ctx.Done():
+					return // End notifier.
+				}
 			}
 		}(n)
 	}
@@ -108,17 +95,19 @@ func (m *Manager) run(ctx context.Context) error {
 	// Wait until the context ends or we receive a signal from
 	// the first notifier, then stop all the other notifiers we
 	// are waiting for.
-	select {
-	case notifierSignal := <-signal:
-		// Start reload process..
-		err := m.reloadGroups(ctx, notifierSignal)
-		if err != nil {
-			return fmt.Errorf("reload process failed: %w", err)
+	for {
+		select {
+		case notifierSignal := <-signal:
+			// Start reload process..
+			err := m.reloadGroups(ctx, notifierSignal)
+			if err != nil {
+				return fmt.Errorf("reload process failed: %w", err)
+			}
+		case <-ctx.Done():
+			// We need to end.
+			return nil
 		}
-	case <-ctx.Done():
 	}
-
-	return nil
 }
 
 const (
