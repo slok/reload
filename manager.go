@@ -64,27 +64,41 @@ func (m *Manager) Add(priority int, r Reloader) {
 	m.reloaders[priority] = rg
 }
 
-// Run will start the manager, start all the notifiers and wait until
-// any of them returns, then it will call the notifiers in priority
+type notifierResult struct {
+	Result string
+	Err    error
+}
+
+// Run will start the manager. This starts all the notifiers and wait until
+// any of them returns a result, then it will call the notifiers in priority
 // batches. All the triggered notifiers will start again.
+//
+// If any of the notifiers returns an error, the execution will end with
+// an error.
 //
 // If the context is cancelled, the manager Run will end without error.
 // If any of the reloaders reload process ends with an error, run will
 // end its execution and return an error.
 func (m *Manager) Run(ctx context.Context) error {
-	signal := make(chan string, len(m.notifiers))
+	signal := make(chan notifierResult, len(m.notifiers))
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel() // This will stop all running notifiers.
 
 	// Run all notifiers and wait for any of them sends a signal signals.
 	for _, n := range m.notifiers {
 		go func(n Notifier) {
+			// Prepare notifier to be executed and map results to
+			// our internal notification result.
+			fn := func(ctx context.Context) notifierResult {
+				res, err := n.Notify(ctx)
+				return notifierResult{Result: res, Err: err}
+			}
 			// Notifiers will rerun once they end executing and
 			// notify. This will be forever or until the context
 			// ends.
 			for {
 				select {
-				case signal <- n.Notify(ctx):
+				case signal <- fn(ctx):
 				case <-ctx.Done():
 					return // End notifier.
 				}
@@ -98,8 +112,13 @@ func (m *Manager) Run(ctx context.Context) error {
 	for {
 		select {
 		case notifierSignal := <-signal:
+			// If signal has an error then stop everything.
+			if notifierSignal.Err != nil {
+				return fmt.Errorf("notifier failed: %w", notifierSignal.Err)
+			}
+
 			// Start reload process..
-			err := m.reloadGroups(ctx, notifierSignal)
+			err := m.reloadGroups(ctx, notifierSignal.Result)
 			if err != nil {
 				return fmt.Errorf("reload process failed: %w", err)
 			}

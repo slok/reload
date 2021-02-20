@@ -20,17 +20,28 @@ type priorityMockReloader struct {
 
 func TestManager(t *testing.T) {
 	tests := map[string]struct {
-		reloaders func() []priorityMockReloader
-		triggerID string
-		expErr    bool
+		reloaders   func() []priorityMockReloader
+		notifierID  string
+		notifierErr error
+		expErr      bool
 	}{
+		"If notifier fails it should end the execution with an error.": {
+			reloaders: func() []priorityMockReloader {
+				m1 := priorityMockReloader{0, &reloadmock.Reloader{}}
+				return []priorityMockReloader{m1}
+			},
+			notifierID:  "test-id",
+			notifierErr: fmt.Errorf("something"),
+			expErr:      true,
+		},
+
 		"Single reloader should be called with the expected trigger ID.": {
 			reloaders: func() []priorityMockReloader {
 				m1 := priorityMockReloader{0, &reloadmock.Reloader{}}
 				m1.m.On("Reload", mock.Anything, "test-id").Once().Return(nil)
 				return []priorityMockReloader{m1}
 			},
-			triggerID: "test-id",
+			notifierID: "test-id",
 		},
 
 		"Single reloader error should get the error.": {
@@ -39,8 +50,8 @@ func TestManager(t *testing.T) {
 				m1.m.On("Reload", mock.Anything, mock.Anything).Once().Return(fmt.Errorf("something"))
 				return []priorityMockReloader{m1}
 			},
-			triggerID: "test-id",
-			expErr:    true,
+			notifierID: "test-id",
+			expErr:     true,
 		},
 
 		"Multiple reloaders should be called with the expected trigger ID.": {
@@ -55,7 +66,7 @@ func TestManager(t *testing.T) {
 				m3.m.On("Reload", mock.Anything, "test-id").Once().Return(nil)
 				return []priorityMockReloader{m1, m2, m3}
 			},
-			triggerID: "test-id",
+			notifierID: "test-id",
 		},
 
 		"Multiple reloaders with different priority should be called with the expected trigger ID.": {
@@ -70,7 +81,7 @@ func TestManager(t *testing.T) {
 				m3.m.On("Reload", mock.Anything, "test-id").Once().Return(nil)
 				return []priorityMockReloader{m1, m2, m3}
 			},
-			triggerID: "test-id",
+			notifierID: "test-id",
 		},
 
 		"Having multiple reloaders with different priority, if a lower priority errors, shouldn't call the next ones.": {
@@ -89,8 +100,8 @@ func TestManager(t *testing.T) {
 
 				return []priorityMockReloader{m1, m2, m3, m4, m5}
 			},
-			triggerID: "test-id",
-			expErr:    true,
+			notifierID: "test-id",
+			expErr:     true,
 		},
 	}
 
@@ -105,10 +116,10 @@ func TestManager(t *testing.T) {
 			for _, r := range reloaders {
 				m.Add(r.priority, r.m)
 			}
-			triggerC := make(chan string)
-			m.On(reload.NotifierFunc(func(context.Context) string {
-				triggerID := <-triggerC
-				return triggerID
+			notifierC := make(chan string)
+			m.On(reload.NotifierFunc(func(context.Context) (string, error) {
+				notifierID := <-notifierC
+				return notifierID, test.notifierErr
 			}))
 
 			// Execute.
@@ -132,7 +143,7 @@ func TestManager(t *testing.T) {
 			}()
 
 			// Release the trigger to start the execution and checks.
-			triggerC <- test.triggerID
+			notifierC <- test.notifierID
 
 			// Wait for until the reloaders handle the trigger.
 			// Then cancel the context in case the reloaders didn't
