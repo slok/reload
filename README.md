@@ -58,6 +58,6 @@ func main() {
 
 ## Examples
 
-TODO
+Check [examples](_examples/).
 
 [oklog/run]: https://github.com/oklog/run
