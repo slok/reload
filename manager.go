@@ -138,7 +138,7 @@ const (
 // reloaders and will wait until all have finished.
 //
 // While the reload process is being executed, if any other
-// reload start trigger happends, it will be ignored.
+// reload start trigger happens, it will be ignored.
 //
 // If any of the reloaders returns an error, it will automatically
 // stop the reload process and end with an error.
