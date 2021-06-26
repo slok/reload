@@ -117,7 +117,7 @@ func (m *Manager) Run(ctx context.Context) error {
 				return fmt.Errorf("notifier failed: %w", notifierSignal.Err)
 			}
 
-			// Start reload process..
+			// Start reload process.
 			err := m.reloadGroups(ctx, notifierSignal.Result)
 			if err != nil {
 				return fmt.Errorf("reload process failed: %w", err)
