@@ -1,0 +1,9 @@
+{
+    "printer": {
+        "message": "I'm Guybrush Threepwood, Mighty Pirate™!"
+    },
+    "curler": {
+        "httpMethod": "GET",
+        "url": "https://github.com"
+    }
+}
