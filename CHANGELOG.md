@@ -4,6 +4,7 @@
 
 ### Added
 
+- NotifierChan helper.
 - Reload manager with priority batching.
 - Notifier interface and NotifierFunc helper.
 - Reloader interface and ReloaderFunc helper.

@@ -106,9 +106,7 @@ func (m *Manager) Run(ctx context.Context) error {
 		}(n)
 	}
 
-	// Wait until the context ends or we receive a signal from
-	// the first notifier, then stop all the other notifiers we
-	// are waiting for.
+	// Wait until the context ends or we receive a signal from a notifier.
 	for {
 		select {
 		case notifierSignal := <-signal:
