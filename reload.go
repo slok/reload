@@ -9,7 +9,7 @@ type Reloader interface {
 	Reload(ctx context.Context, id string) error
 }
 
-//go:generate mockery --case underscore --output reloadmock --outpkg reloadmock --name Reloader
+//go:generate mockery --case underscore --output internal/reloadmock --outpkg reloadmock --name Reloader
 
 // ReloaderFunc is a helper to create reloaders based on functions.
 type ReloaderFunc func(ctx context.Context, id string) error
