@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/slok/reload"
-	"github.com/slok/reload/reloadmock"
+	"github.com/slok/reload/internal/reloadmock"
 )
 
 type priorityMockReloader struct {
