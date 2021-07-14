@@ -18,7 +18,7 @@ type priorityMockReloader struct {
 	m        *reloadmock.Reloader
 }
 
-func TestManager(t *testing.T) {
+func TestManagerWithNotifierFunc(t *testing.T) {
 	tests := map[string]struct {
 		reloaders   func() []priorityMockReloader
 		notifierID  string
@@ -121,6 +121,71 @@ func TestManager(t *testing.T) {
 				notifierID := <-notifierC
 				return notifierID, test.notifierErr
 			}))
+
+			// Execute.
+			ctx, cancel := context.WithCancel(context.Background())
+			checksFinished := make(chan struct{})
+			go func() {
+				err := m.Run(ctx)
+
+				// Check.
+				if test.expErr {
+					assert.Error(err)
+				} else {
+					assert.NoError(err)
+				}
+
+				for _, r := range reloaders {
+					r.m.AssertExpectations(t)
+				}
+
+				close(checksFinished)
+			}()
+
+			// Release the trigger to start the execution and checks.
+			notifierC <- test.notifierID
+
+			// Wait for until the reloaders handle the trigger.
+			// Then cancel the context in case the reloaders didn't
+			// error.
+			time.Sleep(10 * time.Millisecond)
+			cancel()
+
+			// Wait until everything has been checked.
+			<-checksFinished
+		})
+	}
+}
+
+func TestManagerWithNotifierChan(t *testing.T) {
+	tests := map[string]struct {
+		reloaders  func() []priorityMockReloader
+		notifierID string
+		expErr     bool
+	}{
+		"Single reloader should be called with the expected trigger ID.": {
+			reloaders: func() []priorityMockReloader {
+				m1 := priorityMockReloader{0, &reloadmock.Reloader{}}
+				m1.m.On("Reload", mock.Anything, "test-id").Once().Return(nil)
+				return []priorityMockReloader{m1}
+			},
+			notifierID: "test-id",
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			reloaders := test.reloaders()
+
+			// Prepare.
+			m := reload.NewManager()
+			for _, r := range reloaders {
+				m.Add(r.priority, r.m)
+			}
+			notifierC := make(chan string)
+			m.On(reload.NotifierChan(notifierC))
 
 			// Execute.
 			ctx, cancel := context.WithCancel(context.Background())

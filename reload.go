@@ -27,3 +27,12 @@ type NotifierFunc func(ctx context.Context) (string, error)
 
 // Notify satisifies Notifier interface.
 func (n NotifierFunc) Notify(ctx context.Context) (string, error) { return n(ctx) }
+
+// NotifierChan is a helper to create notifiers from channels.
+//
+// Note: Closing the channel is not safe, as the channel will be reused and read
+// from it multiple times for each notification.
+type NotifierChan <-chan string
+
+// Notify satisifies Notifier interface.
+func (n NotifierChan) Notify(ctx context.Context) (string, error) { return <-n, nil }
