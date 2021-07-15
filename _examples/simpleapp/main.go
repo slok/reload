@@ -124,11 +124,8 @@ func Run(ctx context.Context) error {
 	// Wait for OS signals.
 	{
 		// Add OS signal reload notifier.
-		reloadC := make(chan struct{})
-		reloadManager.On(reload.NotifierFunc(func(ctx context.Context) (string, error) {
-			<-reloadC
-			return "sighup", nil
-		}))
+		reloadC := make(chan string)
+		reloadManager.On(reload.NotifierChan(reloadC))
 
 		sigC := make(chan os.Signal, 1)
 		exitC := make(chan struct{})
@@ -143,7 +140,7 @@ func Run(ctx context.Context) error {
 						log.Infof("Signal received: %q", s)
 						// Don't stop if SIGHUP, only reload.
 						if s == syscall.SIGHUP {
-							reloadC <- struct{}{}
+							reloadC <- "sighup"
 							continue
 						}
 
