@@ -4,6 +4,7 @@
 
 ### Added
 
+- Add godoc examples.
 - NotifierChan helper.
 - Reload manager with priority batching.
 - Notifier interface and NotifierFunc helper.
