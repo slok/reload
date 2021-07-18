@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sort"
 	"sync/atomic"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type reloaderGroup struct {
@@ -172,28 +174,15 @@ func (m *Manager) reloadGroups(ctx context.Context, id string) error {
 }
 
 func (m *Manager) reloadGroup(ctx context.Context, rg reloaderGroup, id string) error {
+	g, ctx := errgroup.WithContext(ctx)
+
 	reloaders := rg.reloaders
-
-	errors := make(chan error, len(reloaders))
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel() // This will stop all running goroutines.
 	for _, r := range reloaders {
-		go func(r Reloader) {
-			// Wait until we finish reloading or we have signaled to stop.
-			select {
-			case errors <- r.Reload(ctx, id):
-			case <-ctx.Done():
-			}
-		}(r)
+		r := r
+		g.Go(func() error {
+			return r.Reload(ctx, id)
+		})
 	}
 
-	// Wait until all have been reloaded or we receive an error.
-	for i := 0; i < len(reloaders); i++ {
-		err := <-errors
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return g.Wait()
 }
