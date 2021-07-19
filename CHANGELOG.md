@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## [Unreleased]
+
+## [v0.1.0] - 2021-07-19
 
 ### Added
 
@@ -12,5 +14,5 @@
 - Priority example.
 - Multinotifier example.
 
-[unreleased]: https://github.com/slok/reload/compare/v1.0.0...HEAD
-[v1.0.0]: https://github.com/slok/reload/releases/tag/v1.0.0
+[unreleased]: https://github.com/slok/reload/compare/v0.1.0...HEAD
+[v0.1.0]: https://github.com/slok/reload/releases/tag/v0.1.0
