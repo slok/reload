@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [v0.2.0] - 2024-09-15
+
+## Changed
+
+- Dependencies updated.
+
 ## [v0.1.0] - 2021-07-19
 
 ### Added
@@ -14,5 +20,6 @@
 - Priority example.
 - Multinotifier example.
 
-[unreleased]: https://github.com/slok/reload/compare/v0.1.0...HEAD
+[unreleased]: https://github.com/slok/reload/compare/v0.2.0...HEAD
+[v0.2.0]: https://github.com/slok/reload/releases/tag/v0.2.0
 [v0.1.0]: https://github.com/slok/reload/releases/tag/v0.1.0
